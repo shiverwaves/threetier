@@ -1,0 +1,67 @@
+name: Delete Terraform Remote State
+
+on:
+  workflow_dispatch:
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+
+jobs:
+  job1:
+    name: Delete S3 Buckets
+    runs-on: ubuntu-latest
+    
+    steps: 
+      - name: Query a List of Bucket Names
+        run: |
+          echo "BUCKETS=( $(aws s3api list-buckets --query "Buckets[].Name" --output text) )" >> $GITHUB_ENV
+      - name: Empty Bucket, Remove Versioning, Remove Delete Markers, Remove Bucket
+        run: |
+          for BUCKET in ${BUCKETS[@]}
+          do 
+            if [[ $BUCKET =~ tf-rm-st-bkt ]]
+            then
+                      
+              # empty bucket
+              aws s3 rm s3://$BUCKET --recursive
+              sleep 1
+                        
+              # check for versioning objects
+              if ! [[ $(aws s3api list-object-versions --bucket $BUCKET --output text) =~ None ]]
+              then
+              
+                # delete versioning objects
+                aws s3api delete-objects --bucket $BUCKET --delete "$(aws s3api list-object-versions --bucket $BUCKET --output=json --query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}')"
+                sleep 1
+                  
+                # remove delete markers
+                aws s3api delete-objects --bucket $BUCKET --delete "$(aws s3api list-object-versions --bucket $BUCKET --output=json --query='{Objects: DeleteMarkers[].{Key:Key,VersionId:VersionId}}')"
+                sleep 1
+                         
+              fi
+                        
+              # remove bucket
+              aws s3 rb s3://$BUCKET 
+              sleep 1
+                        
+            fi
+          done
+  job2:
+    name: Delete Dynamodb Tables
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Query a List of Table Names
+        run: |
+          echo "TABLES=( $(aws dynamodb list-tables --query "TableNames[]" --output text) )" >> $GITHUB_ENV
+      - name: Remove Tables
+        run: |
+          for TABLE in ${TABLES[@]}
+          do 
+            if [[ $TABLE =~ tf-rm-st-tbl ]]
+            then
+              aws dynamodb delete-table --table-name $TABLE
+            fi
+          done
