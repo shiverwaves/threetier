@@ -1,0 +1,6 @@
+[servers]
+webserver_ec2
+database_ec2
+
+[all:vars]
+ansible_python_interpreter=/usr/bin/python3
