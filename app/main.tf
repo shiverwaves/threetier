@@ -123,8 +123,8 @@ resource "aws_key_pair" "ssh_key" {
 
 # create webserver ec2 instance
 resource "aws_instance" "webserver_instance" {
-    ami = "ami-053b0d53c279acc90"
-    instance_type = "t2.micro"
+    ami = data.aws_ami.os
+    #ami = "ami-053b0d53c279acc90"
     key_name = "${var.project}-ssh-key"
     associate_public_ip_address = true
     subnet_id = var.public_subnet_id
@@ -137,7 +137,8 @@ resource "aws_instance" "webserver_instance" {
 
 # create database ec2 instance
 resource "aws_instance" "database_instance" {
-    ami = "ami-053b0d53c279acc90"
+    ami = data.aws_ami.os
+    #ami = "ami-053b0d53c279acc90"
     instance_type = "t2.micro"
     key_name = "${var.project}-ssh-key"
     subnet_id = var.private_subnet_id
